@@ -1,0 +1,141 @@
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { SessionService } from '../session/session.service';
+
+@Injectable()
+export class WhatsappService implements OnModuleInit {
+  private attendant_id: string;
+  constructor(private sessionService: SessionService) {}
+
+  async onModuleInit() {
+    if (this.attendant_id) {
+      this.handleIncomingMessages(this.attendant_id);
+    }
+  }
+
+  async createSession(attendantId: string) {
+    await this.sessionService.createSession(attendantId);
+    this.attendant_id = attendantId;
+  }
+
+  async closeSession(attendantId: string) {
+    this.sessionService.closeSession(attendantId);
+  }
+
+  async sendMessage(
+    userNumber: string,
+    textMessage: string,
+    attendantId: string,
+  ) {
+    const client = this.sessionService.getClient(attendantId);
+
+    if (!client) throw new Error('Session not found');
+
+    try {
+      const formattedNumber = userNumber.includes('@s.whatsapp.net')
+        ? userNumber
+        : `${userNumber}@s.whatsapp.net`;
+
+      await client.sendMessage(formattedNumber, { text: textMessage });
+      console.log(`Mensagem enviada para o atendente: ${formattedNumber}`);
+    } catch (error) {
+      console.error(`Erro ao enviar mensagem para o atendente:`, error);
+      throw error;
+    }
+  }
+
+  async handleIncomingMessages(attendantId: string) {
+    const client = this.sessionService.getClient(attendantId);
+
+    if (!client) throw new Error('Session not found');
+
+    client.ev.on('messages.upsert', async (msg) => {
+      if (msg.type === 'notify') {
+        for (const message of msg.messages) {
+          if (!message.message) continue;
+
+          const sender = message.key.remoteJid!;
+          const messageType = this.getMessageType(message);
+
+          if (messageType === 'conversation') {
+            const text = message.message.conversation.trim();
+
+            if (text === '5') {
+              // "Falar com um atendente"
+              await this.sendMessage(
+                sender,
+                `O usuário ${sender} precisa de suporte.`,
+                attendantId,
+              );
+
+              await client.sendMessage(sender, {
+                text: '✅ Sua solicitação foi enviada para um atendente. Aguarde o retorno!',
+              });
+            } else {
+              // Processar mensagem do menu
+              await this.handleUserMessage(client, sender, text);
+            }
+          } else if (messageType === 'image') {
+            await client.sendMessage(sender, {
+              text: '📷 Recebi sua imagem. Deseja mais informações?',
+            });
+          } else if (messageType === 'video') {
+            await client.sendMessage(sender, {
+              text: '🎥 Recebi seu vídeo. Deseja mais informações?',
+            });
+          } else if (messageType === 'document') {
+            await client.sendMessage(sender, {
+              text: '📄 Recebi seu arquivo. Deseja mais informações?',
+            });
+          } else {
+            await client.sendMessage(sender, {
+              text: '❓ Não consegui entender. Tente enviar uma mensagem de texto.',
+            });
+          }
+        }
+      }
+    });
+  }
+
+  private async handleUserMessage(
+    client: any,
+    sender: string,
+    message: string,
+  ) {
+    const menu = `👋 Olá! Eu sou seu assistente. Como posso te ajudar?
+    1️⃣ Informações
+    2️⃣ Solicitar Formulários
+    3️⃣ Pesquisar
+    4️⃣ Perguntas Frequentes
+    5️⃣ Falar com um atendente`;
+
+    let reply = '';
+
+    switch (message) {
+      case '1':
+        reply = '📚 Aqui estão as informações sobre os cursos disponíveis!';
+        break;
+      case '2':
+        reply =
+          '📄 Aqui está o link para solicitar formulários: https://ufsc.br/formularios';
+        break;
+      case '3':
+        reply = '🔍 Digite sua dúvida que eu tentarei ajudar.';
+        break;
+      case '4':
+        reply = '💬 Veja as perguntas frequentes em https://ufsc.br/faq';
+        break;
+      default:
+        reply = menu;
+    }
+
+    await client.sendMessage(sender, { text: reply });
+  }
+
+  private getMessageType(message: any): string {
+    if (message.message?.conversation) return 'conversation';
+    if (message.message?.imageMessage) return 'image';
+    if (message.message?.videoMessage) return 'video';
+    if (message.message?.documentMessage) return 'document';
+    return 'unknown';
+  }
+}

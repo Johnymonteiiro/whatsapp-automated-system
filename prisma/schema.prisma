@@ -1,0 +1,66 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                String    @id @default(uuid())
+  name              String
+  email             String    @unique
+  password          String
+  profile           Profile?
+  sessions          Session[]
+
+  @@map("users")
+}
+
+model Profile {
+  id                String    @id @default(uuid())
+  avatar_url        String  
+  description       String
+  position          String
+  user              User      @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId            String    @unique
+  
+  @@map("profile")
+}
+
+model Document {
+  id                String     @id @default(uuid())
+  collection_name   String     @unique
+  chunk_size        Int        @default(1000)
+  limit             Int?       @default(3)
+  chunk_overlap     Int        @default(20)
+
+   @@map("documents")
+}
+
+model Configuration {
+  id                String       @id @default(uuid())
+  prompt_template   String    
+  max_tokens        Int         @default(1000)
+  temperature       Float       @default(0.5)
+  gpt_model         String      @default("gpt-4o-mini") 
+  embedding_model   String      @default("text-embedding-3-small")
+
+  @@map("configuration")
+}
+
+model Session {
+  id                String      @id @default(uuid())
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId            String
+  auth_data         Json       
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  expiresAt         DateTime?   
+
+  @@map("sessions")
+}
