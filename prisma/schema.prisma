@@ -38,6 +38,8 @@ model Document {
   chunk_size        Int        @default(1000)
   limit             Int?       @default(3)
   chunk_overlap     Int        @default(20)
+  doc_link          String
+  doc_name          String     @unique
 
    @@map("documents")
 }

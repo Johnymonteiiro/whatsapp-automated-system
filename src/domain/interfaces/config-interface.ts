@@ -10,7 +10,7 @@ export interface ConfigProps {
 
 export interface ConfigInterface {
   create(data: Prisma.ConfigurationCreateInput): Promise<Configuration>;
-  updateUser(
+  updateConfig(
     data: Prisma.ConfigurationUpdateInput,
     id: string,
   ): Promise<Configuration>;

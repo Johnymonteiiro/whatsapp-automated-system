@@ -4,7 +4,7 @@ import { SessionService } from '../session/session.service';
 @Injectable()
 export class WhatsappService {
   private attendant_id: string;
-  private supportState: Map<string, boolean> = new Map(); // Map para controlar o estado de suporte por usuário
+  private supportState: Map<string, boolean> = new Map();
 
   constructor(private sessionService: SessionService) {}
 

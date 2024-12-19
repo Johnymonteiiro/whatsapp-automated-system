@@ -1,5 +1,5 @@
 import { PrismaConfigRepository } from 'src/infra/repositories/prisma/config/prisma-config-repository';
-import { CreateConfigUseCase } from '../config-use-case/create-config-use-case';
+import { CreateConfigUseCase } from '../create-config-use-case';
 
 export function MakeCreateConfigUseCase() {
   const configRepository = new PrismaConfigRepository(); // instance the repository

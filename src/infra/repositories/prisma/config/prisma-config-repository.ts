@@ -13,7 +13,7 @@ export class PrismaConfigRepository implements ConfigInterface {
 
     return config;
   }
-  async updateUser(data: Prisma.ConfigurationUpdateInput, id: string) {
+  async updateConfig(data: Prisma.ConfigurationUpdateInput, id: string) {
     const config = await prisma.configuration.update({
       where: {
         id,

@@ -1,0 +1,3 @@
+  const { data } = await supabase.storage
+        .from(bucketName)
+        .getPublicUrl(filename);
