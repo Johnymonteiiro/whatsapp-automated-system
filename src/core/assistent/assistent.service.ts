@@ -8,7 +8,7 @@ export class AssistantService implements OnModuleInit {
     try {
       await this.assistantCoreService.initializeCoreAssistant();
       // const answear = await this.handleQuery(
-      //   'Qual a renda minima para concorrer ao auxilio ?',
+      //   'Como realizar o meu cadastro PRAE?',
       // );
       // console.log('IA Response:', answear);
     } catch (error) {

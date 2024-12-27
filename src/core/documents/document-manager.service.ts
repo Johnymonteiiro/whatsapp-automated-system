@@ -1,10 +1,10 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
-import { DocumentProcessingService } from './documents.service';
-import { VectorStoreService } from 'src/infra/lib/qdrant.service';
-import { LogService } from 'src/infra/logs/logs.service';
-import { MakeDocUseCase } from 'src/domain/use-cases/doc-use-case/factory/get-doc-factory';
 import { QdrantVectorStore } from '@langchain/qdrant';
-import { AIService } from 'src/infra/lib/openai.service';
+import { Injectable, OnModuleInit } from '@nestjs/common';
+import { MakeDocUseCase } from 'src/domain/use-cases/doc-use-case/factory/get-doc-factory';
+import { AIService } from 'src/infra/lib/openAI/openai.service';
+import { VectorStoreService } from 'src/infra/lib/qdrant/qdrant.service';
+import { LogService } from 'src/infra/logs/logs.service';
+import { DocumentProcessingService } from './documents.service';
 
 @Injectable()
 export class DocumentManagerService implements OnModuleInit {

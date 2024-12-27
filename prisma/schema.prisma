@@ -1,14 +1,14 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-generator client {
-  provider = "prisma-client-js"
-}
-
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+generator client {
+  provider = "prisma-client-js"
+}
+
 
 model User {
   id                String    @id @default(uuid())
@@ -16,7 +16,7 @@ model User {
   email             String    @unique
   password          String
   profile           Profile?
-  sessions          Session[]
+  sessions          Session?
 
   @@map("users")
 }
@@ -36,7 +36,6 @@ model Document {
   id                String     @id @default(uuid())
   collection_name   String     @unique
   chunk_size        Int        @default(1000)
-  limit             Int?       @default(3)
   chunk_overlap     Int        @default(20)
   doc_link          String
   doc_name          String     @unique
@@ -55,14 +54,40 @@ model Configuration {
   @@map("configuration")
 }
 
+model GeneralDocConfig {
+  id                      String       @id @default(uuid())
+  relevant_doc_limit      Int         @default(3)
+  relevant_doc_threshold  Float?       @default(0.5)
+  batch_size              Int         @default(10)
+  @@map("general_doc_config")
+}
+
 model Session {
   id                String      @id @default(uuid())
   user              User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId            String
+  userId            String      @unique
+  status            SessionStatus @default(ACTIVE)
   auth_data         Json       
   createdAt         DateTime    @default(now())
   updatedAt         DateTime    @updatedAt
   expiresAt         DateTime?   
 
   @@map("sessions")
+}
+
+model EnvironmentVariable {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("environment_variable")
+}
+
+enum SessionStatus {
+  ACTIVE
+  INACTIVE
+  EXPIRED
 }
