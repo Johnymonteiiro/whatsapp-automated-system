@@ -1,29 +1,32 @@
 import { Module } from '@nestjs/common';
-import { CreateConfigUseCase } from 'src/domain/use-cases/config-use-case/create-config-use-case';
 import { ConfigurationController } from 'src/infra/http/controllers/config.controller';
-import { AIService } from 'src/infra/lib/openai.service';
-import { VectorStoreService } from 'src/infra/lib/qdrant.service';
-import { AssistantService } from './assistent.service';
+import { AIService } from 'src/infra/lib/openAI/openai.service';
 import { SupabaseService } from 'src/infra/lib/supabase/supabase.service';
+import { LogService } from 'src/infra/logs/logs.service';
 import { DocumentManagerService } from '../documents/document-manager.service';
 import { DocumentProcessingService } from '../documents/documents.service';
-import { LogService } from 'src/infra/logs/logs.service';
 import { AssistantCoreService } from './assistent-core.service';
+import { AssistantService } from './assistent.service';
+import { VectorStoreService } from 'src/infra/lib/qdrant/qdrant.service';
+import { PrismaService } from 'src/infra/database/prisma/prisma.service';
+import { PrismaDocService } from 'src/infra/repositories/prisma/doc/prisma_doc.service';
+import { PrismaConfigService } from 'src/infra/repositories/prisma/config/prisma_config.service';
 
 @Module({
-  imports: [AssistantModule],
-  exports: [AssistantModule],
   controllers: [ConfigurationController],
   providers: [
     AssistantService,
-    VectorStoreService,
+    AssistantCoreService,
     AIService,
-    CreateConfigUseCase,
+    VectorStoreService,
     SupabaseService,
     DocumentManagerService,
     DocumentProcessingService,
     LogService,
-    AssistantCoreService,
+    PrismaService,
+    PrismaDocService,
+    PrismaConfigService,
   ],
+  exports: [AssistantService],
 })
 export class AssistantModule {}

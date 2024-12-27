@@ -1,4 +1,4 @@
-import { PrismaConfigRepository } from 'src/infra/repositories/prisma/config/prisma-config-repository';
+import { PrismaConfigService } from 'src/infra/repositories/prisma/config/prisma_config.service';
 
 interface GetConfigCaseResponse {
   config: {
@@ -11,7 +11,7 @@ interface GetConfigCaseResponse {
 }
 
 export class GetConfigUseCase {
-  constructor(private configRepository: PrismaConfigRepository) {}
+  constructor(private configRepository: PrismaConfigService) {}
 
   async execute(): Promise<GetConfigCaseResponse> {
     const response = await this.configRepository.findAll();

@@ -1,13 +1,13 @@
-import { Injectable } from '@nestjs/common';
-import { AIService } from 'src/infra/lib/openai.service';
-import { DocumentManagerService } from '../documents/document-manager.service';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
+import { ChatOpenAI, ChatOpenAICallOptions } from '@langchain/openai';
+import { Injectable } from '@nestjs/common';
 import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
 import { createRetrievalChain } from 'langchain/chains/retrieval';
 import { EnsembleRetriever } from 'langchain/retrievers/ensemble';
-import { ChatOpenAI, ChatOpenAICallOptions } from '@langchain/openai';
-import { MakeGetConfigUseCase } from 'src/domain/use-cases/config-use-case/factory/get-config-factory';
-import { MakeDocUseCase } from 'src/domain/use-cases/doc-use-case/factory/get-doc-factory';
+import { AIService } from 'src/infra/lib/openAI/openai.service';
+import { DocumentManagerService } from '../documents/document-manager.service';
+import { PrismaConfigService } from 'src/infra/repositories/prisma/config/prisma_config.service';
+import { PrismaDocService } from 'src/infra/repositories/prisma/doc/prisma_doc.service';
 
 @Injectable()
 export class AssistantCoreService {
@@ -18,24 +18,37 @@ export class AssistantCoreService {
 
   constructor(
     private readonly aiService: AIService,
+    private readonly prismaConfigService: PrismaConfigService,
+    private readonly prismaDocService: PrismaDocService,
     private readonly documentManagerService: DocumentManagerService,
   ) {}
 
   async initializeCoreAssistant(): Promise<void> {
-    await this.documentManagerService.startProcessing();
+    try {
+      await this.documentManagerService.startProcessing();
 
-    const { llm_model } = await this.aiService.configAI();
-    this.llm = llm_model;
+      const [config, docs, aiConfig] = await Promise.all([
+        this.prismaConfigService.findAll(),
+        this.prismaDocService.findAll(),
+        this.aiService.configAI(),
+      ]);
 
-    const getConfig = MakeGetConfigUseCase();
-    const getDocs = MakeDocUseCase();
-    const { config } = await getConfig.execute();
-    const { docs } = await getDocs.execute();
+      if (!config || config.length === 0) {
+        console.warn('Configuration data is missing.');
+      }
+      if (!docs || docs.length === 0) {
+        console.warn('Document data is missing.');
+      }
 
-    this.prompt_template = config.prompt_template;
-    const collections = docs.map((doc) => doc.collection_name);
+      this.llm = aiConfig?.llm_model;
+      this.prompt_template = config[0]?.prompt_template ?? 'default_template';
 
-    this.retriever = await this.initializeRetriever(collections);
+      const collections = docs.map((doc) => doc.collection_name);
+      this.retriever = await this.initializeRetriever(collections);
+    } catch (error) {
+      console.error('Error initializing Core Assistant:', error);
+      throw error;
+    }
   }
 
   private async initializeRetriever(

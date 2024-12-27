@@ -13,14 +13,13 @@ import {
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { DocumentDTO } from 'src/domain/dtos/document.dto';
-import { VectorStoreService } from 'src/infra/lib/qdrant.service';
-import { ZodValidationPipe } from 'src/domain/pipe/zod-validation-pipe';
-import { ConfigDTO, ConfigDTOSchema } from 'src/domain/pipe/config-pipe';
-import { MakeCreateConfigUseCase } from 'src/domain/use-cases/config-use-case/factory/create-config-factory';
+import { ConfigDTO, ConfigDTOSchema } from 'src/infra/http/pipe/config-pipe';
+import { ZodValidationPipe } from 'src/infra/http/pipe/zod-validation-pipe';
+import { VectorStoreService } from 'src/infra/lib/qdrant/qdrant.service';
 import { SupabaseService } from 'src/infra/lib/supabase/supabase.service';
-import { MakeCreateDocUseCase } from 'src/domain/use-cases/doc-use-case/factory/create-config-factory';
 import { LogEntry, LogService } from 'src/infra/logs/logs.service';
-import { AssistantCoreService } from 'src/core/assistent/assistent-core.service';
+import { PrismaConfigService } from 'src/infra/repositories/prisma/config/prisma_config.service';
+import { PrismaDocService } from 'src/infra/repositories/prisma/doc/prisma_doc.service';
 
 @Controller('configuration')
 export class ConfigurationController {
@@ -28,7 +27,8 @@ export class ConfigurationController {
     private readonly vectorStoreService: VectorStoreService,
     private readonly supabaseService: SupabaseService,
     private readonly logService: LogService,
-    private readonly assistantCoreService: AssistantCoreService,
+    private readonly prismaConfigService: PrismaConfigService,
+    private readonly prismaDocService: PrismaDocService,
   ) {}
 
   @Post('/upload/document')
@@ -42,13 +42,8 @@ export class ConfigurationController {
     file: Express.Multer.File,
     @Body() documentData: DocumentDTO,
   ) {
-    const {
-      chunk_overlap,
-      chunk_size,
-      collection_name,
-      doc_name,
-      limit = 3,
-    } = documentData;
+    const { chunk_overlap, chunk_size, collection_name, doc_name } =
+      documentData;
 
     try {
       await this.supabaseService.uploadFile({
@@ -57,8 +52,6 @@ export class ConfigurationController {
         contentType: file.mimetype,
         bucketName: 'documents',
       });
-
-      const createDocument = MakeCreateDocUseCase();
       const collection =
         await this.vectorStoreService.collectionExist(collection_name);
       if (collection) {
@@ -73,13 +66,10 @@ export class ConfigurationController {
         bucketName: 'documents',
       });
 
-      this.assistantCoreService.getRelevantDocLimit(limit);
-
-      await createDocument.execute({
+      await this.prismaDocService.create({
         collection_name,
         chunk_overlap: Number(chunk_overlap),
         chunk_size: Number(chunk_size),
-        limit: Number(limit),
         doc_name,
         doc_link: publicUrl,
       });
@@ -109,8 +99,7 @@ export class ConfigurationController {
       temperature,
     }: ConfigDTO,
   ) {
-    const createConfigUseCase = MakeCreateConfigUseCase();
-    await createConfigUseCase.execute({
+    await this.prismaConfigService.create({
       embedding_model,
       gpt_model,
       max_tokens,

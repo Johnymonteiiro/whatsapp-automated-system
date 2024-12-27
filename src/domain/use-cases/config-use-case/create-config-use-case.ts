@@ -1,13 +1,13 @@
 import { Configuration } from '@prisma/client';
 import { ConfigDTO } from 'src/domain/dtos/config_ai.dto';
-import { PrismaConfigRepository } from 'src/infra/repositories/prisma/config/prisma-config-repository';
+import { PrismaConfigService } from 'src/infra/repositories/prisma/config/prisma_config.service';
 
 interface CreateConfigCaseResponse {
   config: Configuration;
 }
 
 export class CreateConfigUseCase {
-  constructor(private configRepository: PrismaConfigRepository) {}
+  constructor(private configRepository: PrismaConfigService) {}
 
   async execute({
     embedding_model,
