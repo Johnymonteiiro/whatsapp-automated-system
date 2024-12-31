@@ -2,31 +2,55 @@ import { Injectable } from '@nestjs/common';
 import { PDFLoader } from '@langchain/community/document_loaders/fs/pdf';
 import { Document } from 'langchain/document';
 import { RecursiveCharacterTextSplitter } from 'langchain/text_splitter';
+import { LogService } from 'src/infra/logs/logs.service';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 @Injectable()
 export class DocumentProcessingService {
+  constructor(
+    @InjectQueue('audio') private audioQueue: Queue,
+    private readonly logService: LogService,
+  ) {}
+  private async downloadPDF(doc_url: string): Promise<ArrayBuffer> {
+    try {
+      const response = await fetch(doc_url);
+      if (!response.ok) {
+        this.logService.info(`Failed to fetch PDF: ${response.statusText}`, {
+          status: response.statusText,
+          doc_url: doc_url,
+        });
+      }
+
+      return await response.arrayBuffer();
+    } catch (error) {
+      this.logService.error(`Error downloading PDF from URL: ${doc_url}`, {
+        status: 'error',
+        error: error.message,
+        doc_url: doc_url,
+      });
+    }
+  }
+
   async loadPDF(doc_url: string): Promise<Document<Record<string, any>>[]> {
     try {
-      const headResponse = await fetch(doc_url, { method: 'HEAD' });
-      if (!headResponse.ok) {
-        throw new Error(`Failed to fetch PDF: ${headResponse.statusText}`);
-      }
-
-      const response = await fetch(doc_url);
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch PDF: ${response.statusText}`);
-      }
-
-      const arrayBuffer = await response.arrayBuffer();
+      const arrayBuffer = await this.downloadPDF(doc_url);
       const blob = new Blob([arrayBuffer], { type: 'application/pdf' });
 
       const loader = new PDFLoader(blob, { splitPages: true });
       const pages = await loader.load();
+
+      this.logService.info(`Successfully loaded PDF.`, {
+        status: 'sucess',
+        pages: `${pages.length} loaded`,
+      });
       return pages;
     } catch (error) {
-      console.error(`Error loading PDF from URL: ${doc_url}`, error);
-      throw error;
+      this.logService.error(`Error loading PDF`, {
+        status: 'error',
+        doc_url: doc_url,
+        error: error.message,
+      });
     }
   }
 
@@ -43,10 +67,16 @@ export class DocumentProcessingService {
       });
 
       const chunks = await textSplitter.splitDocuments(pages);
+      this.logService.info(`Successfully split document`, {
+        status: 'success',
+        chunks: `${chunks.length} chunks`,
+      });
       return chunks;
     } catch (error) {
-      console.error('Error splitting document:', error);
-      throw error;
+      this.logService.error(`Error splitting document`, {
+        status: 'error',
+        error: error.message,
+      });
     }
   }
 }

@@ -1,19 +1,23 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { AssistantCoreService } from './assistent-core.service';
+import { LogService } from 'src/infra/logs/logs.service';
 
 @Injectable()
-export class AssistantService implements OnModuleInit {
-  constructor(private readonly assistantCoreService: AssistantCoreService) {}
-  async onModuleInit() {
+export class AssistantService {
+  constructor(
+    private readonly assistantCoreService: AssistantCoreService,
+    private readonly logService: LogService,
+  ) {}
+  async initAssistant() {
     try {
       await this.assistantCoreService.initializeCoreAssistant();
-      // const answear = await this.handleQuery(
-      //   'Como realizar o meu cadastro PRAE?',
-      // );
-      // console.log('IA Response:', answear);
+      // const answer = await this.handleQuery('O que é cadastro PRAE?');
+      // console.log(answer);
     } catch (error) {
-      console.error('Erro ao inicializar o assistente:', error.message);
-      throw error;
+      this.logService.error('Erro ao inicializar o assistente', {
+        status: 'error',
+        error: error.message,
+      });
     }
   }
 
@@ -21,7 +25,11 @@ export class AssistantService implements OnModuleInit {
     try {
       return await this.assistantCoreService.generateResponse(query);
     } catch (error) {
-      console.error('Erro ao processar consulta:', error.message);
+      this.logService.error('Erro ao processar consulta', {
+        status: 'error',
+        query: query,
+        error: error.message,
+      });
       return 'Ocorreu um erro ao tentar processar sua consulta. Por favor, tente novamente mais tarde.';
     }
   }

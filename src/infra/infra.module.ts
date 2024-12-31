@@ -9,6 +9,8 @@ import { PrismaDocService } from './repositories/prisma/doc/prisma_doc.service';
 import { PrismaSessionService } from './repositories/prisma/session/prisma_session.service';
 import { PrismaUserService } from './repositories/prisma/user/prisma_user.service';
 import { PrismaAuthState } from './lib/baileys/connection/prisma_auth.service';
+import { PrismaEnvironmentsService } from './repositories/prisma/environments/prisma_env.service';
+// import { CacheService } from './cache/cache.service';
 
 @Module({
   controllers: [UserController, SessionController],
@@ -21,6 +23,8 @@ import { PrismaAuthState } from './lib/baileys/connection/prisma_auth.service';
     PrismaSessionService,
     PrismaUserService,
     PrismaAuthState,
+    PrismaEnvironmentsService,
+    // CacheService,
   ],
   exports: [
     ConnectionService,
@@ -30,6 +34,8 @@ import { PrismaAuthState } from './lib/baileys/connection/prisma_auth.service';
     PrismaSessionService,
     PrismaUserService,
     PrismaAuthState,
+    PrismaEnvironmentsService,
+    // CacheService,
   ],
 })
 export class InfraModule {}

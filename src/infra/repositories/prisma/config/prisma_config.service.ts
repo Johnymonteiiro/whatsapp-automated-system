@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { Prisma } from '@prisma/client';
+import { GeneralDocConfig, Prisma } from '@prisma/client';
 import { ConfigProps } from 'src/domain/interfaces/config-interface';
 import { PrismaService } from 'src/infra/database/prisma/prisma.service';
 
@@ -15,6 +15,14 @@ export class PrismaConfigService {
     return config;
   }
 
+  async createGeneralConfig(data: Prisma.GeneralDocConfigCreateInput) {
+    const general_config = await this.prisma.generalDocConfig.create({
+      data,
+    });
+
+    return general_config;
+  }
+
   async updateConfig(data: Prisma.ConfigurationUpdateInput, id: string) {
     const config = await this.prisma.configuration.update({
       where: {
@@ -24,6 +32,20 @@ export class PrismaConfigService {
     });
 
     return config;
+  }
+
+  async updateGeneralConfig(
+    data: Prisma.GeneralDocConfigUpdateInput,
+    id: string,
+  ) {
+    const general_config = await this.prisma.generalDocConfig.update({
+      where: {
+        id,
+      },
+      data,
+    });
+
+    return general_config;
   }
 
   async findAll(): Promise<ConfigProps[]> {
@@ -39,5 +61,10 @@ export class PrismaConfigService {
     });
 
     return config;
+  }
+
+  async findGeneralConfig(): Promise<GeneralDocConfig> {
+    const general_config = await this.prisma.generalDocConfig.findMany();
+    return general_config[0];
   }
 }

@@ -11,6 +11,8 @@ import { VectorStoreService } from 'src/infra/lib/qdrant/qdrant.service';
 import { PrismaService } from 'src/infra/database/prisma/prisma.service';
 import { PrismaDocService } from 'src/infra/repositories/prisma/doc/prisma_doc.service';
 import { PrismaConfigService } from 'src/infra/repositories/prisma/config/prisma_config.service';
+import { PrismaEnvironmentsService } from 'src/infra/repositories/prisma/environments/prisma_env.service';
+// import { CacheService } from 'src/infra/cache/cache.service';
 
 @Module({
   controllers: [ConfigurationController],
@@ -26,6 +28,8 @@ import { PrismaConfigService } from 'src/infra/repositories/prisma/config/prisma
     PrismaService,
     PrismaDocService,
     PrismaConfigService,
+    PrismaEnvironmentsService,
+    // CacheService,
   ],
   exports: [AssistantService],
 })

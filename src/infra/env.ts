@@ -5,6 +5,8 @@ import { z } from 'zod';
 export const envSchema = z.object({
   DATABASE_URL: z.string().url(),
   NODE_ENV: z.enum(['dev', 'test', 'production']).default('dev'),
+  QUEUE_HOST: z.string(),
+  QUEUE_PORT: z.coerce.number().default(6379),
   PORT: z.coerce.number().default(3333),
 });
 
