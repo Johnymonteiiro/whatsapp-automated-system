@@ -7,7 +7,6 @@ import { InfraModule } from './infra.module';
 import { envSchema } from './env';
 // import { APP_INTERCEPTOR } from '@nestjs/core';
 import { BullModule } from '@nestjs/bull';
-import { DocumentsModule } from 'src/core/documents/documents.module';
 
 // const TimeExpiredCache = 60 * 2;
 
@@ -24,6 +23,12 @@ import { DocumentsModule } from 'src/core/documents/documents.module';
           host: configService.get('QUEUE_HOST'),
           port: configService.get('QUEUE_PORT'),
         },
+        defaultJobOptions: {
+          removeOnComplete: true,
+          timeout: 100000,
+          attempts: 3,
+          backoff: 5000,
+        },
       }),
       inject: [ConfigService],
     }),
@@ -35,7 +40,6 @@ import { DocumentsModule } from 'src/core/documents/documents.module';
     AssistantModule,
     MessageModule,
     InfraModule,
-    DocumentsModule,
   ],
   providers: [
     // {

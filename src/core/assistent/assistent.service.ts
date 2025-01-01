@@ -11,8 +11,8 @@ export class AssistantService {
   async initAssistant() {
     try {
       await this.assistantCoreService.initializeCoreAssistant();
-      // const answer = await this.handleQuery('O que é cadastro PRAE?');
-      // console.log(answer);
+      const answer = await this.handleQuery('Como posso me cadastrar no PRAE?');
+      console.log(answer);
     } catch (error) {
       this.logService.error('Erro ao inicializar o assistente', {
         status: 'error',

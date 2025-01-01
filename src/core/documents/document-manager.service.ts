@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { MakeDocUseCase } from 'src/domain/use-cases/doc-use-case/factory/get-doc-factory';
-import { VectorStoreService } from 'src/infra/lib/qdrant/qdrant.service';
 import { LogService } from 'src/infra/logs/logs.service';
-import { DocumentProcessingService } from './documents.service';
 import { PrismaConfigService } from 'src/infra/repositories/prisma/config/prisma_config.service';
+import { InjectQueue } from '@nestjs/bull';
+import { Queue } from 'bull';
 
 interface DocumentInfo {
   doc_name: string;
@@ -16,8 +16,7 @@ interface DocumentInfo {
 @Injectable()
 export class DocumentManagerService {
   constructor(
-    private readonly documentProcessingService: DocumentProcessingService,
-    private readonly vectorStoreService: VectorStoreService,
+    @InjectQueue('documents-queues') private documentQueue: Queue,
     private readonly logService: LogService,
     private readonly prismaConfigService: PrismaConfigService,
   ) {}
@@ -42,7 +41,7 @@ export class DocumentManagerService {
         total_documents: docs.length,
       });
       const batch_size = batchSize ? batchSize : 5;
-      await this.processDocuments(docs, batch_size);
+      await this.processDocumentsInBatches(docs, batch_size);
     } catch (error) {
       this.logService.error('Error during document processing initialization', {
         status: 'error',
@@ -51,7 +50,10 @@ export class DocumentManagerService {
     }
   }
 
-  async processDocuments(docs: DocumentInfo[], batchSize): Promise<void> {
+  async processDocumentsInBatches(
+    docs: DocumentInfo[],
+    batchSize,
+  ): Promise<void> {
     for (let i = 0; i < docs.length; i += batchSize) {
       const batch = docs.slice(i, i + batchSize);
       this.logService.info(`Processing batch`, {
@@ -64,7 +66,15 @@ export class DocumentManagerService {
 
       for (const doc of batch) {
         try {
-          await this.processSingleDocument(doc);
+          await this.documentQueue.add(
+            'document_processor',
+            {
+              doc: doc,
+            },
+            {
+              delay: 5000,
+            },
+          );
         } catch (error) {
           this.logService.error('Failed to process document', {
             status: 'error',
@@ -79,42 +89,6 @@ export class DocumentManagerService {
       status: 'success',
       total_documents: docs.length,
       total_batches: Math.ceil(docs.length / batchSize),
-    });
-  }
-
-  private async processSingleDocument(doc: DocumentInfo): Promise<void> {
-    const { doc_name, doc_link, collection_name, chunk_size, chunk_overlap } =
-      doc;
-
-    this.logService.info(`Processing document: ${doc_name}`, {
-      status: 'Processing',
-      doc_name: doc_name,
-      collection_name: collection_name,
-      chunk_overlap: chunk_overlap,
-      chunk_size: chunk_size,
-    });
-
-    const pages = await this.documentProcessingService.loadPDF(doc_link);
-    const documentChunks = await this.documentProcessingService.splitDocument(
-      pages,
-      chunk_size,
-      chunk_overlap,
-    );
-
-    this.logService.info(
-      `Loaded ${pages.length} pages and split into ${documentChunks.length} chunks.`,
-      {
-        status: 'success',
-        doc_name: doc_name,
-        page: pages.length,
-        chunk: `${documentChunks.length} chunks`,
-      },
-    );
-    await this.vectorStoreService.store_data(documentChunks, collection_name);
-    this.logService.info(`Document successfully stored.`, {
-      status: 'success',
-      doc_name: doc_name,
-      collection_name: collection_name,
     });
   }
 }
