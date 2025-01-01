@@ -75,15 +75,15 @@ model Session {
   @@map("sessions")
 }
 
-model EnvironmentVariable {
+model Environments {
   id          String   @id @default(uuid())
-  key         String   @unique
+  name        String   @unique
   value       String
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
-  @@map("environment_variable")
+  @@map("environments")
 }
 
 enum SessionStatus {

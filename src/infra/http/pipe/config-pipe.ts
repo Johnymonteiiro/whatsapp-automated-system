@@ -17,4 +17,12 @@ export const ConfigDTOSchema = z.object({
   ]),
 });
 
+export const GeneralConfigDTOSchema = z.object({
+  relevant_doc_limit: z.number().positive(),
+  score: z.number().positive(),
+  batch_size: z.number().positive(),
+});
+
 export type ConfigDTO = z.infer<typeof ConfigDTOSchema>;
+
+export type GeneralConfig = z.infer<typeof GeneralConfigDTOSchema>;
