@@ -1,6 +1,6 @@
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { ChatPromptTemplate } from '@langchain/core/prompts';
 import { ChatOpenAI, ChatOpenAICallOptions } from '@langchain/openai';
-import { Injectable } from '@nestjs/common';
 import { createStuffDocumentsChain } from 'langchain/chains/combine_documents';
 import { createRetrievalChain } from 'langchain/chains/retrieval';
 import { EnsembleRetriever } from 'langchain/retrievers/ensemble';
@@ -10,13 +10,12 @@ import { PrismaDocService } from 'src/infra/repositories/prisma/doc/prisma_doc.s
 import { VectorStoreService } from 'src/infra/lib/qdrant/qdrant.service';
 import { LogService } from 'src/infra/logs/logs.service';
 import { parallelTasks } from 'src/infra/util/parallel-tasks';
-// import { CacheService } from 'src/infra/cache/cache.service';
 
 @Injectable()
-export class AssistantCoreService {
+export class AssistantCoreService implements OnModuleInit {
   private retriever: EnsembleRetriever | null = null;
-  private prebuiltPrompt: ChatPromptTemplate | null = null;
   private llm: ChatOpenAI<ChatOpenAICallOptions> | null = null;
+  private prebuiltPrompt: ChatPromptTemplate | null = null;
 
   constructor(
     private readonly aiService: AIService,
@@ -24,10 +23,9 @@ export class AssistantCoreService {
     private readonly prismaDocService: PrismaDocService,
     private readonly vectorStoreService: VectorStoreService,
     private readonly logService: LogService,
-    // private readonly cacheService: CacheService,
   ) {}
 
-  async initializeCoreAssistant(): Promise<void> {
+  async onModuleInit() {
     try {
       const [config, docs, aiConfig] = await Promise.all([
         this.prismaConfigService.findAll(),
@@ -35,167 +33,126 @@ export class AssistantCoreService {
         this.aiService.configAI(),
       ]);
 
-      if (!config || config.length === 0) {
-        this.logService.warn('Configuration data is missing.', {
-          status: 'warning',
-          confing_info: config,
+      if (!config.length || !docs.length) {
+        this.logService.warn('Missing configuration or documents.', {
+          config,
+          docs,
         });
-      }
-
-      if (!docs || docs.length === 0) {
-        this.logService.warn('Document data is missing.', {
-          status: 'warning',
-          docs_info: docs,
-        });
+        return;
       }
 
       this.llm = aiConfig?.llm_model;
-      const prompt_template = config[0]?.prompt_template ?? 'default_template';
+      const promptTemplate = config[0]?.prompt_template || 'default_template';
+      this.prebuiltPrompt = this.createPrompt(promptTemplate);
 
       const collections = docs.map((doc) => doc.collection_name);
       this.retriever = await this.initializeRetriever(collections);
 
-      this.prebuiltPrompt = ChatPromptTemplate.fromMessages([
-        [
-          'system',
-          `${prompt_template}
-             \n\n{context} 
-             You must strictly adhere to the provided context when generating responses.
-             Do not provide information, suggestions, or engage in discussions beyond the given context.
-              If the context does not address the user's query, 
-              politely indicate that the requested information is not 
-              available.`,
-        ],
-        ['human', '{input}'],
-      ]);
-
-      this.logService.info('Core Assistant initialized successfully.', {
-        status: 'success',
-      });
+      this.logService.info('Assistant initialized successfully.');
     } catch (error) {
-      this.logService.warn('Error initializing Core Assistant.', {
-        status: 'warning',
-        error: error.message,
-      });
+      this.logService.error('Error during initialization.', { error });
     }
+  }
+
+  private createPrompt(template: string): ChatPromptTemplate {
+    return ChatPromptTemplate.fromMessages([
+      [
+        'system',
+        `${template}
+        {context}
+        Adhere strictly to the context. If not addressed, indicate so politely.`,
+      ],
+      ['human', '{input}'],
+    ]);
   }
 
   private async initializeRetriever(
     collections: string[],
-  ): Promise<EnsembleRetriever> {
+  ): Promise<EnsembleRetriever | null> {
     try {
       const vectorStores = await parallelTasks(
         collections.map(
           (collection) => () =>
             this.vectorStoreService.getVectorStore(collection),
         ),
-        5, // Limite de concorrência ou tasks em simultaneo
+        5,
       );
 
-      const relevant_doc_response = (
-        await this.prismaConfigService.findGeneralConfig()
-      )?.relevant_doc_limit;
-
-      const relevant_doc = relevant_doc_response ? relevant_doc_response : 3;
+      const relevantDocsLimit =
+        (await this.prismaConfigService.findGeneralConfig())
+          ?.relevant_doc_limit || 3;
 
       const retrievers = vectorStores.map((store) =>
-        store.asRetriever({ k: relevant_doc }),
+        store.asRetriever({ k: relevantDocsLimit }),
       );
 
       return new EnsembleRetriever({
         retrievers,
-        weights: retrievers.map(() => 1 / retrievers.length),
+        weights: Array(retrievers.length).fill(1 / retrievers.length),
       });
     } catch (error) {
-      this.logService.error('Error initializing retriever', {
-        status: 'error',
-        error: error.message,
-      });
+      this.logService.error('Error initializing retriever.', { error });
       return null;
     }
   }
 
-  async retrieveContext(query: string): Promise<string | null> {
+  private async retrieveContext(query: string): Promise<string | null> {
     if (!this.retriever) {
-      this.logService.warn('Retriever is not initialized', {
-        status: 'warning',
-      });
+      this.logService.warn('Retriever is not initialized.');
       return null;
     }
-
-    try {
-      return this.retrieveCache(query);
-    } catch (error) {
-      this.logService.error('Error retrieving context.', {
-        status: 'error',
-        error: error.message,
-      });
-      return null;
-    }
-  }
-
-  async generateResponse(query: string): Promise<string> {
-    if (!this.llm) {
-      this.logService.warn('LLM is not initialized.', {
-        status: 'warning',
-        llm_info: this.llm,
-      });
-      return 'O assistente não está configurado corretamente.';
-    }
-
-    try {
-      const context = await this.retrieveContext(query);
-
-      if (!context) {
-        this.logService.warn('Context not found.', {
-          status: 'warning',
-          context_info: context,
-        });
-        return 'Desculpe, não encontrei informações relevantes.';
-      }
-
-      const prompt = this.prebuiltPrompt!;
-      const questionAnswerChain = await createStuffDocumentsChain({
-        llm: this.llm,
-        prompt,
-      });
-
-      const chain = await createRetrievalChain({
-        retriever: this.retriever!,
-        combineDocsChain: questionAnswerChain,
-      });
-
-      const result = await chain.invoke({ input: query, context });
-      return result.answer;
-    } catch (error) {
-      this.logService.error('Error generating response.', {
-        status: 'error',
-        error: error.message,
-      });
-      return 'Houve um problema ao gerar a resposta. Tente novamente.';
-    }
-  }
-
-  private async retrieveCache(query: string): Promise<string | null> {
-    // const cache_data = this.cacheService.get_data_cached<string>(query);
-    // if (cache_data) {
-    //   return cache_data;
-    // }
 
     const documents = await this.retriever._getRelevantDocuments(query);
-
-    if (!documents || documents.length === 0) {
-      this.logService.info('No relevant documents found.', {
-        relevants_docs: documents,
-      });
+    if (!documents?.length) {
+      this.logService.info('No relevant documents found.');
       return null;
     }
 
-    const content = documents
-      .map((doc: any) => doc.pageContent || doc.content)
-      .join('\\n\\n');
+    return documents.map((doc) => doc.pageContent).join('\n\n');
+  }
 
-    // this.cacheService.store_data_cache<string>(query, content, 3000);
-    return content;
+  private async generateResponse(
+    query: string,
+    context: string,
+  ): Promise<string | null> {
+    if (!this.llm || !this.prebuiltPrompt || !this.retriever) {
+      this.logService.warn('LLM or retriever not initialized.');
+      return null;
+    }
+
+    const questionAnswerChain = await createStuffDocumentsChain({
+      llm: this.llm,
+      prompt: this.prebuiltPrompt,
+    });
+
+    const chain = await createRetrievalChain({
+      retriever: this.retriever,
+      combineDocsChain: questionAnswerChain,
+    });
+
+    try {
+      const resultStream = await chain.stream({ input: query, context });
+      let answer = '';
+      for await (const result of resultStream) {
+        answer += result.answer;
+      }
+      return answer;
+    } catch (error) {
+      this.logService.error('Error generating response.', { error });
+      return null;
+    }
+  }
+
+  async handleQuery(query: string): Promise<string> {
+    try {
+      const context = await this.retrieveContext(query);
+      if (!context) return 'No relevant information found.';
+
+      const answer = await this.generateResponse(query, context);
+      return answer || 'Unable to process your request.';
+    } catch (error) {
+      this.logService.error('Error handling query.', { query, error });
+      return 'An error occurred while processing your request.';
+    }
   }
 }

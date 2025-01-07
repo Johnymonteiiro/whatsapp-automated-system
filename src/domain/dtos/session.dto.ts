@@ -1,6 +1,4 @@
-import { Prisma } from '@prisma/client';
-
 export class SessionDTO {
-  auth_data: Prisma.JsonNullValueInput | Prisma.InputJsonValue;
+  auth_data: string;
   userId: string;
 }

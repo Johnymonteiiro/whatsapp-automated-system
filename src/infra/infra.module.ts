@@ -8,7 +8,7 @@ import { PrismaConfigService } from './repositories/prisma/config/prisma_config.
 import { PrismaDocService } from './repositories/prisma/doc/prisma_doc.service';
 import { PrismaSessionService } from './repositories/prisma/session/prisma_session.service';
 import { PrismaUserService } from './repositories/prisma/user/prisma_user.service';
-import { PrismaAuthState } from './lib/baileys/connection/prisma_auth.service';
+import { PrismaAuthStateService } from './lib/baileys/connection/prisma_auth.service';
 import { PrismaEnvironmentsService } from './repositories/prisma/environments/prisma_env.service';
 import { DocumentsModule } from 'src/core/documents/documents.module';
 // import { CacheService } from './cache/cache.service';
@@ -23,7 +23,7 @@ import { DocumentsModule } from 'src/core/documents/documents.module';
     PrismaDocService,
     PrismaSessionService,
     PrismaUserService,
-    PrismaAuthState,
+    PrismaAuthStateService,
     PrismaEnvironmentsService,
     // CacheService,
   ],
@@ -34,7 +34,7 @@ import { DocumentsModule } from 'src/core/documents/documents.module';
     PrismaDocService,
     PrismaSessionService,
     PrismaUserService,
-    PrismaAuthState,
+    PrismaAuthStateService,
     PrismaEnvironmentsService,
     // CacheService,
   ],

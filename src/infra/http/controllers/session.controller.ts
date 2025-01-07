@@ -1,5 +1,7 @@
 import { Body, Controller, Get, Post } from '@nestjs/common';
 import { ConnectionService } from 'src/infra/lib/baileys/connection/connection.service';
+import { PrismaAuthStateService } from 'src/infra/lib/baileys/connection/prisma_auth.service';
+// import * as QRCode from 'qrcode';
 
 export class CreateSessionDto {
   attendantId: string;
@@ -13,11 +15,21 @@ export class CreateMessageDTO {
 
 @Controller('session')
 export class SessionController {
-  constructor(private connectionService: ConnectionService) {}
+  constructor(
+    private connectionService: ConnectionService,
+    private readonly prismaAuthStateService: PrismaAuthStateService,
+  ) {}
 
-  @Get('status')
-  getStatus() {
-    return { status: 'WhatsApp bot is running' };
+  @Get('/qr_code')
+  async getQrcode() {
+    const qrCode = this.connectionService.getQRCode();
+    return `<img src="${qrCode}" alt="QR Code" />`;
+  }
+
+  @Get('/session')
+  async getSessioin() {
+    const session = this.prismaAuthStateService.getSession();
+    return { session };
   }
 
   @Post('/create')

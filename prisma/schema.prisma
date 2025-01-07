@@ -16,7 +16,7 @@ model User {
   email             String    @unique
   password          String
   profile           Profile?
-  sessions          Session?
+  sessions          Session[]
 
   @@map("users")
 }
@@ -63,13 +63,13 @@ model GeneralDocConfig {
 }
 
 model Session {
-  id                String      @id @default(uuid())
-  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
-  userId            String      @unique
+  id                String        @id @default(uuid())
+  user              User          @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId            String        @unique
   status            SessionStatus @default(ACTIVE)
-  auth_data         Json       
-  createdAt         DateTime    @default(now())
-  updatedAt         DateTime    @updatedAt
+  auth_data         Json      
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
   expiresAt         DateTime?   
 
   @@map("sessions")

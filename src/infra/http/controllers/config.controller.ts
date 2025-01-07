@@ -32,7 +32,7 @@ import { LogService, RecentLogsTypes } from 'src/infra/logs/logs.service';
 import { PrismaConfigService } from 'src/infra/repositories/prisma/config/prisma_config.service';
 import { PrismaDocService } from 'src/infra/repositories/prisma/doc/prisma_doc.service';
 import { PrismaEnvironmentsService } from 'src/infra/repositories/prisma/environments/prisma_env.service';
-import { AssistantService } from 'src/core/assistent/assistent.service';
+import { AssistantCoreService } from 'src/core/assistent/assistent-core.service';
 
 @Controller('configuration')
 export class ConfigurationController {
@@ -44,7 +44,7 @@ export class ConfigurationController {
     private readonly prismaDocService: PrismaDocService,
     private readonly documentManagerService: DocumentManagerService,
     private readonly environmentsService: PrismaEnvironmentsService,
-    private readonly assisatntService: AssistantService,
+    private readonly assistantCoreService: AssistantCoreService,
   ) {}
 
   @Get('/logs')
@@ -52,9 +52,19 @@ export class ConfigurationController {
     return this.logService.getRecentLogs();
   }
 
-  @Get('/assistant/init')
-  async initAssistant() {
-    await this.assisatntService.initAssistant();
+  @Post('/question')
+  @HttpCode(HttpStatus.CREATED)
+  async assistant(@Body() body: { question: string }) {
+    try {
+      const answer = await this.assistantCoreService.handleQuery(body.question);
+      if (answer) return answer;
+    } catch (error) {
+      console.log(error);
+      throw new HttpException(
+        'Failing to processing the documents',
+        HttpStatus.EXPECTATION_FAILED,
+      );
+    }
   }
 
   @Post('/upload/document')

@@ -13,7 +13,7 @@ import { MakeCreateUserUseCase } from 'src/domain/use-cases/user-use-case/factor
 import { UserSchema, UserZodType } from 'src/infra/http/pipe/user-pipe';
 import { ZodValidationPipe } from 'src/infra/http/pipe/zod-validation-pipe';
 
-@Controller('accountS')
+@Controller('accounts')
 export class UserController {
   constructor() {}
 

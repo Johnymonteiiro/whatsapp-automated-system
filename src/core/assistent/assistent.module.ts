@@ -5,7 +5,6 @@ import { SupabaseService } from 'src/infra/lib/supabase/supabase.service';
 import { LogService } from 'src/infra/logs/logs.service';
 import { DocumentManagerService } from '../documents/document-manager.service';
 import { AssistantCoreService } from './assistent-core.service';
-import { AssistantService } from './assistent.service';
 import { VectorStoreService } from 'src/infra/lib/qdrant/qdrant.service';
 import { PrismaService } from 'src/infra/database/prisma/prisma.service';
 import { PrismaDocService } from 'src/infra/repositories/prisma/doc/prisma_doc.service';
@@ -17,7 +16,6 @@ import { DocumentsModule } from '../documents/documents.module';
 @Module({
   controllers: [ConfigurationController],
   providers: [
-    AssistantService,
     AssistantCoreService,
     AIService,
     VectorStoreService,
@@ -31,6 +29,6 @@ import { DocumentsModule } from '../documents/documents.module';
     // CacheService,
   ],
   imports: [DocumentsModule],
-  exports: [AssistantService],
+  exports: [AssistantCoreService],
 })
 export class AssistantModule {}
