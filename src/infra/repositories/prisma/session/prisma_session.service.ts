@@ -32,10 +32,22 @@ export class PrismaSessionService {
     }
   }
 
+  async userExists(userId: string) {
+    try {
+      const session = await this.prisma.user.findUnique({
+        where: { id: userId },
+      });
+      return session;
+    } catch (error) {
+      console.error(`Error finding session for user`, error);
+      throw new Error('Could not find session.');
+    }
+  }
+
   async upsertSession(data: any, userId: string, id: string): Promise<Session> {
     try {
       const session = await this.prisma.session.upsert({
-        where: { userId },
+        where: { id: id },
         create: {
           id,
           userId,
@@ -68,7 +80,9 @@ export class PrismaSessionService {
 
   async delete(userId: string): Promise<void> {
     try {
-      await this.prisma.session.delete({ where: { userId } });
+      await this.prisma.session.delete({
+        where: { userId },
+      });
     } catch (error) {
       console.error(`Error deleting session with ID ${userId}:`, error);
       throw new Error('Could not delete session.');

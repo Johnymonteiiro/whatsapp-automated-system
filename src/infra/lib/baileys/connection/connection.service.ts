@@ -28,7 +28,7 @@ export class ConnectionService {
 
   private async initializeClient(userId: string): Promise<void> {
     const { state, saveCreds } =
-      await this.prismaAuthStateService.useAuthState();
+      await this.prismaAuthStateService.useAuthState(userId);
 
     // const { state, saveCreds } = await useMultiFileAuthState(`${userId}`);
 

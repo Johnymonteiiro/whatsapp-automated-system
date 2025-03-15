@@ -70,8 +70,9 @@ model Session {
   auth_data         Json      
   createdAt         DateTime      @default(now())
   updatedAt         DateTime      @updatedAt
-  expiresAt         DateTime?   
+  expiresAt         DateTime? 
 
+ @@unique([userId, id])
   @@map("sessions")
 }
 

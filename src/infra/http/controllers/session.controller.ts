@@ -26,11 +26,11 @@ export class SessionController {
     return `<img src="${qrCode}" alt="QR Code" />`;
   }
 
-  @Get('/session')
-  async getSessioin() {
-    const session = this.prismaAuthStateService.getSession();
-    return { session };
-  }
+  // @Get('/session')
+  // async getSessioin() {
+  //   const session = this.prismaAuthStateService.getSession();
+  //   return { session };
+  // }
 
   @Post('/create')
   createSession(@Body() { attendantId }: CreateSessionDto) {

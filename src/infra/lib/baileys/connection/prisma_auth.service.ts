@@ -65,57 +65,41 @@ const BufferJSON = {
 
 @Injectable()
 export class PrismaAuthStateService {
-  private storage: Map<string, any> = new Map();
-
   constructor(private prismaSessionService: PrismaSessionService) {}
 
-  private async writeData(data: any, sessionId: string): Promise<void> {
-    this.storage.set(
-      sessionId,
-      JSON.parse(JSON.stringify(data, BufferJSON.replacer)),
-    );
-    // const session = await this.prismaSessionService.findOne(sessionId);
-
-    // if (session) {
-    //   this.prismaSessionService.updateSession(
-    //     {
-    //       auth_data: data,
-    //       updatedAt: new Date(),
-    //       expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-    //     },
-    //     userId,
-    //   );
-    // }
-
-    this.prismaSessionService.upsertSession(
-      data,
-      'edcca8c6-86bd-40ca-ac79-aaf5baef3cd4',
-      sessionId,
-    );
+  private async writeData(
+    data: any,
+    sessionId: string,
+    userId: string,
+  ): Promise<void> {
+    const userExists = await this.prismaSessionService.userExists(userId);
+    if (!userExists) {
+      throw new Error(`User with ID ${userId} does not exist.`);
+    }
+    await this.prismaSessionService.upsertSession(data, userId, sessionId);
   }
 
-  private async readData(sessionId: string): Promise<any> {
+  private async readData(userId: string): Promise<any> {
     try {
-      const data = this.storage.get(sessionId);
-      return data ? JSON.parse(JSON.stringify(data), BufferJSON.reviver) : null;
-      //   : null;;
-      // const session = await this.prismaSessionService.findOne(sessionId);
-      // return session.auth_data
-      //   ? JSON.parse(JSON.stringify(session.auth_data), BufferJSON.reviver)
-      //   : null;
+      const session = await this.prismaSessionService.findOne(userId);
+      return session?.auth_data
+        ? JSON.parse(JSON.stringify(session.auth_data), BufferJSON.reviver)
+        : null;
     } catch (error) {
-      console.log(error);
+      console.error(`Error reading session for key "${userId}":`, error);
       return null;
     }
   }
 
   private async removeData(userId: string): Promise<void> {
-    this.storage.delete(userId);
-    // this.prismaSessionService.delete(userId);
+    await this.prismaSessionService.delete(userId);
   }
 
-  async useAuthState(): Promise<{ state: AuthState; saveCreds: () => void }> {
-    const creds = (await this.readData('creds')) || initAuthCreds();
+  async useAuthState(
+    userId: string,
+  ): Promise<{ state: AuthState; saveCreds: () => void }> {
+    const sessionKey = `${userId}-auth-creds`;
+    const creds = (await this.readData(sessionKey)) || initAuthCreds();
 
     return {
       state: {
@@ -128,7 +112,8 @@ export class PrismaAuthStateService {
             const data: Record<string, any> = {};
             await Promise.all(
               ids.map(async (id) => {
-                let value = await this.readData(`${type}-${id}`);
+                const key = `${userId}-${type}-${id}`;
+                let value = await this.readData(key);
                 if (type === 'app-state-sync-key') {
                   value = proto.Message.AppStateSyncKeyData.fromObject(value);
                 }
@@ -144,9 +129,9 @@ export class PrismaAuthStateService {
             for (const category of Object.keys(data)) {
               for (const id of Object.keys(data[category])) {
                 const value = data[category][id];
-                const key = `${category}-${id}`;
+                const key = `${userId}-${category}-${id}`;
                 if (value) {
-                  tasks.push(Promise.resolve(this.writeData(value, key)));
+                  tasks.push(this.writeData(value, key, userId));
                 } else {
                   tasks.push(this.removeData(key));
                 }
@@ -157,12 +142,8 @@ export class PrismaAuthStateService {
         },
       },
       saveCreds: (): void => {
-        this.writeData(creds, 'creds');
+        this.writeData(creds, sessionKey, userId);
       },
     };
-  }
-
-  getSession() {
-    return this.storage.get('creds');
   }
 }
